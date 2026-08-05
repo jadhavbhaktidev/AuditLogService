@@ -38,6 +38,8 @@ Implemented in this slice:
 6. Spring smoke test with mocked repository dependency.
 7. Repository-backed integration test using H2 for portable validation in this environment.
 8. Stable timestamp canonicalization using epoch-millis persistence to avoid timezone drift in hash verification.
+9. API-layer integration tests covering write, query, verify, validation errors, and tamper detection.
+10. Rich verify diagnostics now include expected versus actual values for mismatch analysis.
 
 ## Validation Result
 
@@ -45,6 +47,7 @@ Implemented in this slice:
 2. `mvn -q -DskipTests compile` passes.
 3. Repository-backed integration test covers append, query, verify, and tamper detection.
 4. Full `mvn test` suite passes.
+5. API integration tests validate endpoint contracts and error handling shape.
 
 ## Done Criteria
 

@@ -22,24 +22,27 @@ public class AuditChainVerifier {
         for (AuditRecord record : records) {
             if (expectedSequence != null && !record.getSequenceNumber().equals(expectedSequence)) {
                 return new AuditVerificationIssue(false, record.getSequenceNumber(),
-                        "SEQUENCE_GAP_OR_REORDER", "Sequence gap or reorder detected", expectedSequence - 1);
+                        "SEQUENCE_GAP_OR_REORDER", "Sequence gap or reorder detected", expectedSequence - 1,
+                        String.valueOf(expectedSequence), String.valueOf(record.getSequenceNumber()));
             }
 
             if (!expectedPrevHash.equals(record.getPrevHash())) {
                 return new AuditVerificationIssue(false, record.getSequenceNumber(),
-                        "PREV_HASH_MISMATCH", "Previous hash does not match the chain", record.getSequenceNumber() - 1);
+                        "PREV_HASH_MISMATCH", "Previous hash does not match the chain", record.getSequenceNumber() - 1,
+                        expectedPrevHash, record.getPrevHash());
             }
 
             String recalculatedHash = auditChainHasher.sha256Hex(auditChainHasher.canonicalPayload(record));
             if (!recalculatedHash.equals(record.getRecordHash())) {
                 return new AuditVerificationIssue(false, record.getSequenceNumber(),
-                        "RECORD_HASH_MISMATCH", "Record hash does not match stored content", record.getSequenceNumber());
+                        "RECORD_HASH_MISMATCH", "Record hash does not match stored content", record.getSequenceNumber(),
+                        recalculatedHash, record.getRecordHash());
             }
 
             expectedPrevHash = record.getRecordHash();
             expectedSequence = record.getSequenceNumber() + 1;
         }
 
-        return new AuditVerificationIssue(true, null, null, "Chain intact", records.size());
+        return new AuditVerificationIssue(true, null, null, "Chain intact", records.size(), null, null);
     }
 }

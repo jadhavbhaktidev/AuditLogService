@@ -5,5 +5,7 @@ public record AuditVerificationIssue(
         Long firstBadSequenceNumber,
         String violationType,
         String message,
-        long checkedRecords) {
+        long checkedRecords,
+        String expectedValue,
+        String actualValue) {
 }
