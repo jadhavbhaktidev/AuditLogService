@@ -105,3 +105,13 @@ Record every meaningful AI interaction used in this project.
   - Human Rationale: Satisfies BL-204/BL-205 with behavior verified through integration tests.
   - Validation Performed: Full `mvn test` suite passed (11 tests).
   - Follow-up Actions: Implement bulk export endpoint and offline bundle verifier.
+
+- 2026-08-05:
+  - Task ID: SCENARIO-B-EXPORT-SLICE-1
+  - Prompt Intent: Implement bulk export bundles with independent verification support.
+  - Constraints Provided: Maintain deterministic metadata/checksum behavior and keep redacted values masked in exports.
+  - AI Output Summary: Added export bundle endpoint, checksum computation, offline bundle verification utility endpoint, and integration tests for valid and tampered bundles.
+  - Disposition: ACCEPTED
+  - Human Rationale: Completes BL-206/BL-207 and closes Scenario B integration scope in BL-208.
+  - Validation Performed: Full `mvn test` suite passed (13 tests).
+  - Follow-up Actions: Move to Scenario C ambiguity clarification and scoped compliance reporting.
