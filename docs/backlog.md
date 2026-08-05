@@ -36,9 +36,9 @@
 - [ ] BL-203 Update verifier for legitimate archive handling.
 - [x] BL-204 Implement structured redaction strategy.
 - [x] BL-205 Add redaction approval/audit metadata.
-- [ ] BL-206 Implement bulk export endpoint.
-- [ ] BL-207 Implement offline bundle verifier utility.
-- [ ] BL-208 Add retention/redaction/export integration tests.
+- [x] BL-206 Implement bulk export endpoint.
+- [x] BL-207 Implement offline bundle verifier utility.
+- [x] BL-208 Add retention/redaction/export integration tests.
 
 ## Epic 3 - Scenario C Ambiguous Requirement
 
