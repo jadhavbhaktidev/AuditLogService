@@ -34,8 +34,8 @@
 - [ ] BL-201 Implement retention policy configuration.
 - [ ] BL-202 Implement archive workflow and metadata.
 - [ ] BL-203 Update verifier for legitimate archive handling.
-- [ ] BL-204 Implement structured redaction strategy.
-- [ ] BL-205 Add redaction approval/audit metadata.
+- [x] BL-204 Implement structured redaction strategy.
+- [x] BL-205 Add redaction approval/audit metadata.
 - [ ] BL-206 Implement bulk export endpoint.
 - [ ] BL-207 Implement offline bundle verifier utility.
 - [ ] BL-208 Add retention/redaction/export integration tests.

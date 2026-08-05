@@ -2,6 +2,7 @@ package com.auditlogservice.repository;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import com.auditlogservice.domain.AuditRecord;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -18,6 +19,8 @@ public interface AuditRecordRepository extends JpaRepository<AuditRecord, Long>,
     Long findMaxSequenceNumber();
 
     List<AuditRecord> findAllByOrderBySequenceNumberAsc();
+
+    Optional<AuditRecord> findBySequenceNumber(Long sequenceNumber);
 
     @Modifying
     @Query("update AuditRecord a set a.archivedAt = :archivedAt where a.archivedAt is null and a.eventTimestamp < :cutoffEpochMillis")

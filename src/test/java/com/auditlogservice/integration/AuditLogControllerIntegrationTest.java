@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.auditlogservice.repository.AuditRecordRepository;
+import com.auditlogservice.repository.RedactionAuditRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,11 +30,15 @@ class AuditLogControllerIntegrationTest {
     @Autowired
     private AuditRecordRepository auditRecordRepository;
 
+        @Autowired
+        private RedactionAuditRepository redactionAuditRepository;
+
     @Autowired
     private ObjectMapper objectMapper;
 
     @BeforeEach
     void clearData() {
+                redactionAuditRepository.deleteAll();
         auditRecordRepository.deleteAll();
     }
 
@@ -211,5 +216,69 @@ class AuditLogControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.intact").value(true))
                 .andExpect(jsonPath("$.checkedRecords").value(2));
+    }
+
+    @Test
+    void redactionMasksFieldsInQueryWithoutBreakingVerification() throws Exception {
+        String event = """
+                {
+                  "eventType": "USER_UPDATED",
+                  "actorId": "actor-z",
+                  "resourceType": "ACCOUNT",
+                  "resourceId": "acct-z",
+                  "payload": {
+                    "email": "user@example.com",
+                    "token": "tok-secret",
+                    "nested": {"ssn": "111-22-3333", "city": "Pune"}
+                  },
+                  "timestamp": "2026-08-05T12:00:00Z"
+                }
+                """;
+
+        mockMvc.perform(post("/audit/events")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(event))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.sequenceNumber").value(1));
+
+        String redaction = """
+                {
+                  "sequenceNumber": 1,
+                  "redactedFields": ["token", "nested.ssn"],
+                  "reason": "GDPR request",
+                  "approvedBy": "compliance-1"
+                }
+                """;
+
+        mockMvc.perform(post("/audit/redactions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(redaction))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sequenceNumber").value(1))
+                .andExpect(jsonPath("$.redactionState").value("REDACTED"))
+                .andExpect(jsonPath("$.redactedFields[0]").value("token"))
+                .andExpect(jsonPath("$.redactedFields[1]").value("nested.ssn"));
+
+        mockMvc.perform(get("/audit/events")
+                        .param("actorId", "actor-z")
+                        .param("resourceType", "ACCOUNT")
+                        .param("resourceId", "acct-z")
+                        .param("page", "0")
+                        .param("size", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].payload.email").value("user@example.com"))
+                .andExpect(jsonPath("$.items[0].payload.token").value("[REDACTED]"))
+                .andExpect(jsonPath("$.items[0].payload.nested.ssn").value("[REDACTED]"))
+                .andExpect(jsonPath("$.items[0].payload.nested.city").value("Pune"));
+
+        var storedRecord = auditRecordRepository.findBySequenceNumber(1L).orElseThrow();
+        JsonNode persistedPayload = objectMapper.readTree(storedRecord.getPayloadJson());
+        assertThat(persistedPayload.get("token").asText()).isEqualTo("tok-secret");
+        assertThat(persistedPayload.get("nested").get("ssn").asText()).isEqualTo("111-22-3333");
+
+        mockMvc.perform(get("/audit/verify"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.intact").value(true))
+                .andExpect(jsonPath("$.checkedRecords").value(1));
     }
 }

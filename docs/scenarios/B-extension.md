@@ -28,19 +28,29 @@ Implemented in this slice:
 4. Verify endpoint continues validating full chain including archived records.
 5. API integration tests for retention archive behavior and verify integrity after archival.
 
+Implemented in this follow-up slice:
+
+1. Structured redaction endpoint: `POST /audit/redactions`.
+2. Redaction approval metadata persistence (`redaction_audit`) with approver, reason, timestamp, and proof artifact.
+3. Query-time payload masking for approved redacted fields while keeping stored event payload immutable.
+4. Verification compatibility retained because hash source data is not mutated by redaction.
+5. API integration test for nested-field redaction masking and post-redaction chain integrity verification.
+
 ## Validation Result (Current)
 
 1. Full `mvn test` suite passes.
 2. Archived records are excluded from default query results.
 3. Including archived records via `includeArchived=true` returns full set.
 4. Chain verification remains intact after legitimate archival.
+5. Full `mvn test` suite passes after redaction workflow addition.
 
-## Redaction Design Notes (To Fill)
+## Redaction Design Notes (Current)
 
-1. Sensitive fields list and policy source.
-2. Replacement artifact format.
-3. Hash-compatibility and proof strategy.
-4. Operational approval and audit requirements.
+1. Redaction targets are dotted field paths (for example `token`, `nested.ssn`).
+2. Stored payload remains immutable to preserve existing record hash determinism.
+3. Sensitive values are masked as `[REDACTED]` only in API query output.
+4. Proof artifact stores hashed commitments for redacted field values and approval context.
+5. Redaction operations are auditable via dedicated `redaction_audit` records.
 
 ## Done Criteria
 

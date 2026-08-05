@@ -6,6 +6,8 @@ import com.auditlogservice.dto.AuditEventQueryResponse;
 import com.auditlogservice.dto.AuditEventRequest;
 import com.auditlogservice.dto.AuditEventResponse;
 import com.auditlogservice.dto.AuditVerificationIssue;
+import com.auditlogservice.dto.RedactionRequest;
+import com.auditlogservice.dto.RedactionResponse;
 import com.auditlogservice.dto.RetentionRunResponse;
 import com.auditlogservice.service.AuditLogService;
 import jakarta.validation.Valid;
@@ -51,6 +53,11 @@ public class AuditLogController {
     @PostMapping("/retention/run")
     public ResponseEntity<RetentionRunResponse> runRetention(@RequestParam(required = false) Integer days) {
         return ResponseEntity.ok(auditLogService.runRetention(days));
+    }
+
+    @PostMapping("/redactions")
+    public ResponseEntity<RedactionResponse> redact(@Valid @RequestBody RedactionRequest request) {
+        return ResponseEntity.ok(auditLogService.redact(request));
     }
 
     @GetMapping("/verify")

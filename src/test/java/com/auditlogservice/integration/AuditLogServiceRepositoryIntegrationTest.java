@@ -9,6 +9,7 @@ import com.auditlogservice.dto.AuditEventRequest;
 import com.auditlogservice.dto.AuditEventResponse;
 import com.auditlogservice.dto.AuditVerificationIssue;
 import com.auditlogservice.repository.AuditRecordRepository;
+import com.auditlogservice.repository.RedactionAuditRepository;
 import com.auditlogservice.service.AuditChainHasher;
 import com.auditlogservice.service.AuditLogService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -30,6 +31,9 @@ class AuditLogServiceRepositoryIntegrationTest {
     private AuditRecordRepository auditRecordRepository;
 
     @Autowired
+    private RedactionAuditRepository redactionAuditRepository;
+
+    @Autowired
     private ObjectMapper objectMapper;
 
         @Autowired
@@ -37,6 +41,7 @@ class AuditLogServiceRepositoryIntegrationTest {
 
     @BeforeEach
     void clearData() {
+        redactionAuditRepository.deleteAll();
         auditRecordRepository.deleteAll();
     }
 
