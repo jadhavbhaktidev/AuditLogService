@@ -26,6 +26,22 @@ Implement append-only write/query APIs with tamper-evident hash chain and verifi
 5. Mutate one persisted record directly.
 6. Verify again and confirm first inconsistency is reported.
 
+## Implementation Status
+
+Implemented in this slice:
+
+1. Spring Boot REST controller for append, query, and verify.
+2. JPA entity and repository for audit record persistence.
+3. Hash-chain service and verifier utilities.
+4. Validation and error-handling scaffolding.
+5. Unit tests for canonical hashing and chain verification.
+6. Spring smoke test with mocked repository dependency.
+
+## Validation Result
+
+1. `mvn test` passes.
+2. `mvn -q -DskipTests compile` passes.
+
 ## Done Criteria
 
 1. No update/delete audit APIs exposed.
