@@ -1,0 +1,8 @@
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/audit_log_service}
+    username: ${SPRING_DATASOURCE_USERNAME:audit_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:audit_password}
