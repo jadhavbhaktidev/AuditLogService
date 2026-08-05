@@ -5,8 +5,8 @@ import java.time.OffsetDateTime;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 
 @Entity
@@ -14,7 +14,8 @@ import jakarta.persistence.Table;
 public class AuditRecord {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(generator = "audit_records_seq")
+    @SequenceGenerator(name = "audit_records_seq", sequenceName = "audit_records_seq", allocationSize = 1)
     private Long id;
 
     @Column(name = "sequence_number", nullable = false, unique = true)
@@ -32,11 +33,11 @@ public class AuditRecord {
     @Column(name = "resource_id", nullable = false)
     private String resourceId;
 
-    @Column(name = "payload_json", nullable = false, columnDefinition = "jsonb")
+    @Column(name = "payload_json", nullable = false)
     private String payloadJson;
 
     @Column(name = "event_timestamp", nullable = false)
-    private OffsetDateTime eventTimestamp;
+    private Long eventTimestamp;
 
     @Column(name = "ingestion_timestamp", nullable = false)
     private OffsetDateTime ingestionTimestamp;
@@ -115,11 +116,11 @@ public class AuditRecord {
         this.payloadJson = payloadJson;
     }
 
-    public OffsetDateTime getEventTimestamp() {
+    public Long getEventTimestamp() {
         return eventTimestamp;
     }
 
-    public void setEventTimestamp(OffsetDateTime eventTimestamp) {
+    public void setEventTimestamp(Long eventTimestamp) {
         this.eventTimestamp = eventTimestamp;
     }
 

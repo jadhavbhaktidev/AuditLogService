@@ -1,12 +1,14 @@
+create sequence if not exists audit_records_seq start with 1 increment by 1;
+
 create table if not exists audit_records (
-    id bigserial primary key,
+    id bigint primary key,
     sequence_number bigint not null unique,
     event_type varchar(100) not null,
     actor_id varchar(255) not null,
     resource_type varchar(255) not null,
     resource_id varchar(255) not null,
-    payload_json jsonb not null,
-    event_timestamp timestamptz not null,
+    payload_json text not null,
+    event_timestamp bigint not null,
     ingestion_timestamp timestamptz not null default now(),
     prev_hash varchar(64) not null,
     record_hash varchar(64) not null,

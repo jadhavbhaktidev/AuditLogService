@@ -43,7 +43,7 @@ class AuditChainVerifierTest {
         record.setResourceType("RESOURCE");
         record.setResourceId("resource");
         record.setPayloadJson("{\"value\":\"" + payload + "\"}");
-        record.setEventTimestamp(OffsetDateTime.parse("2026-08-05T10:15:30Z"));
+        record.setEventTimestamp(OffsetDateTime.parse("2026-08-05T10:15:30Z").toInstant().toEpochMilli());
         record.setPrevHash(prevHash);
         record.setRecordHash(hasher.sha256Hex(hasher.canonicalPayload(record)));
         return record;

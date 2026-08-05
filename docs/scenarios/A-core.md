@@ -36,11 +36,15 @@ Implemented in this slice:
 4. Validation and error-handling scaffolding.
 5. Unit tests for canonical hashing and chain verification.
 6. Spring smoke test with mocked repository dependency.
+7. Repository-backed integration test using H2 for portable validation in this environment.
+8. Stable timestamp canonicalization using epoch-millis persistence to avoid timezone drift in hash verification.
 
 ## Validation Result
 
 1. `mvn test` passes.
 2. `mvn -q -DskipTests compile` passes.
+3. Repository-backed integration test covers append, query, verify, and tamper detection.
+4. Full `mvn test` suite passes.
 
 ## Done Criteria
 

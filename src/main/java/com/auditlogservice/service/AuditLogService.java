@@ -40,10 +40,11 @@ public class AuditLogService {
     @Transactional
     public AuditEventResponse append(AuditEventRequest request) {
         OffsetDateTime resolvedTimestamp = request.timestamp() != null ? request.timestamp() : OffsetDateTime.now(ZoneOffset.UTC);
+        long eventTimestamp = resolvedTimestamp.toInstant().toEpochMilli();
         Long maxSequence = auditRecordRepository.findMaxSequenceNumber();
         long nextSequence = maxSequence + 1;
         String prevHash = maxSequence == 0 ? AuditChainHasher.GENESIS_PREV_HASH : auditRecordRepository.findAllByOrderBySequenceNumberAsc().getLast().getRecordHash();
-        String canonicalPayload = auditChainHasher.canonicalPayload(request, resolvedTimestamp, prevHash);
+        String canonicalPayload = auditChainHasher.canonicalPayload(request, eventTimestamp, prevHash);
         String recordHash = auditChainHasher.sha256Hex(canonicalPayload);
 
         AuditRecord record = new AuditRecord();
@@ -53,7 +54,7 @@ public class AuditLogService {
         record.setResourceType(request.resourceType());
         record.setResourceId(request.resourceId());
         record.setPayloadJson(serializePayload(request.payload()));
-        record.setEventTimestamp(resolvedTimestamp);
+        record.setEventTimestamp(eventTimestamp);
         record.setIngestionTimestamp(OffsetDateTime.now(ZoneOffset.UTC));
         record.setPrevHash(prevHash);
         record.setRecordHash(recordHash);
@@ -87,10 +88,10 @@ public class AuditLogService {
             specification = specification.and((root, query, builder) -> builder.equal(root.get("eventType"), eventType));
         }
         if (from != null) {
-            specification = specification.and((root, query, builder) -> builder.greaterThanOrEqualTo(root.get("eventTimestamp"), from));
+            specification = specification.and((root, query, builder) -> builder.greaterThanOrEqualTo(root.get("eventTimestamp"), from.toInstant().toEpochMilli()));
         }
         if (to != null) {
-            specification = specification.and((root, query, builder) -> builder.lessThanOrEqualTo(root.get("eventTimestamp"), to));
+            specification = specification.and((root, query, builder) -> builder.lessThanOrEqualTo(root.get("eventTimestamp"), to.toInstant().toEpochMilli()));
         }
 
         var pageResult = auditRecordRepository.findAll(specification, PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "sequenceNumber")));
@@ -111,7 +112,7 @@ public class AuditLogService {
                 record.getResourceType(),
                 record.getResourceId(),
                 parsePayload(record.getPayloadJson()),
-                record.getEventTimestamp(),
+                OffsetDateTime.ofInstant(java.time.Instant.ofEpochMilli(record.getEventTimestamp()), ZoneOffset.UTC),
                 record.getPrevHash(),
                 record.getRecordHash());
     }

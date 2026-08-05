@@ -1,9 +1,9 @@
 package com.auditlogservice.service;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.time.OffsetDateTime;
 import java.util.HexFormat;
 
 import com.auditlogservice.dto.AuditEventRequest;
@@ -24,14 +24,14 @@ public class AuditChainHasher {
         this.objectMapper = objectMapper;
     }
 
-    public String canonicalPayload(AuditEventRequest request, OffsetDateTime resolvedTimestamp, String prevHash) {
+    public String canonicalPayload(AuditEventRequest request, long resolvedTimestampEpochMillis, String prevHash) {
         ObjectNode node = objectMapper.createObjectNode();
         node.put("actorId", request.actorId());
         node.put("eventType", request.eventType());
         node.put("prevHash", prevHash);
         node.put("resourceId", request.resourceId());
         node.put("resourceType", request.resourceType());
-        node.put("timestamp", resolvedTimestamp.toString());
+        node.put("timestamp", Instant.ofEpochMilli(resolvedTimestampEpochMillis).toString());
         node.set("payload", request.payload());
         return serialize(node);
     }
@@ -43,7 +43,7 @@ public class AuditChainHasher {
         node.put("prevHash", record.getPrevHash());
         node.put("resourceId", record.getResourceId());
         node.put("resourceType", record.getResourceType());
-        node.put("timestamp", record.getEventTimestamp().toString());
+        node.put("timestamp", Instant.ofEpochMilli(record.getEventTimestamp()).toString());
         node.set("payload", readTree(record.getPayloadJson()));
         return serialize(node);
     }

@@ -65,3 +65,13 @@ Record every meaningful AI interaction used in this project.
   - Human Rationale: Establishes the core tamper-evident path and API surface for later expansion.
   - Validation Performed: `mvn test` passed after fixing the smoke test context with a mocked repository.
   - Follow-up Actions: Add persistence-backed query integration tests and refine verification diagnostics.
+
+- 2026-08-05:
+  - Task ID: SCENARIO-A-SLICE-2
+  - Prompt Intent: Add repository-backed integration coverage for append/query/verify and tamper detection.
+  - Constraints Provided: Keep tests runnable in this environment without requiring Docker.
+  - AI Output Summary: Added H2-backed integration test profile, integration tests, and timestamp persistence normalization using epoch millis for deterministic hash verification.
+  - Disposition: ACCEPTED
+  - Human Rationale: Confirms core behavior with real repository persistence and removes timezone-induced hash drift.
+  - Validation Performed: Full `mvn test` suite passed (6 tests).
+  - Follow-up Actions: Add API-layer integration tests and refine verify diagnostics payload.
