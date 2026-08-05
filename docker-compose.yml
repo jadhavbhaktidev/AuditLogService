@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: audit-log-postgres
+    environment:
+      POSTGRES_DB: audit_log_service
+      POSTGRES_USER: audit_user
+      POSTGRES_PASSWORD: audit_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U audit_user -d audit_log_service"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres-data:
