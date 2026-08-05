@@ -10,6 +10,7 @@ import com.auditlogservice.repository.AuditRecordRepository;
 import com.auditlogservice.repository.RedactionAuditRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -280,5 +281,103 @@ class AuditLogControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.intact").value(true))
                 .andExpect(jsonPath("$.checkedRecords").value(1));
+    }
+
+    @Test
+    void exportBundleAndOfflineVerificationEndpointsWork() throws Exception {
+        String firstEvent = """
+                {
+                  "eventType": "USER_UPDATED",
+                  "actorId": "actor-exp",
+                  "resourceType": "ACCOUNT",
+                  "resourceId": "acct-exp-1",
+                  "payload": {"token": "tok-111", "region": "IN"},
+                  "timestamp": "2026-08-05T13:00:00Z"
+                }
+                """;
+
+        String secondEvent = """
+                {
+                  "eventType": "USER_LOGIN",
+                  "actorId": "actor-exp",
+                  "resourceType": "ACCOUNT",
+                  "resourceId": "acct-exp-2",
+                  "payload": {"ip": "10.1.1.1"},
+                  "timestamp": "2026-08-05T13:05:00Z"
+                }
+                """;
+
+        String thirdEvent = """
+                {
+                  "eventType": "USER_LOGIN",
+                  "actorId": "actor-other",
+                  "resourceType": "ACCOUNT",
+                  "resourceId": "acct-other",
+                  "payload": {"ip": "10.9.9.9"},
+                  "timestamp": "2026-08-05T13:10:00Z"
+                }
+                """;
+
+        mockMvc.perform(post("/audit/events").contentType(MediaType.APPLICATION_JSON).content(firstEvent))
+                .andExpect(status().isCreated());
+        mockMvc.perform(post("/audit/events").contentType(MediaType.APPLICATION_JSON).content(secondEvent))
+                .andExpect(status().isCreated());
+        mockMvc.perform(post("/audit/events").contentType(MediaType.APPLICATION_JSON).content(thirdEvent))
+                .andExpect(status().isCreated());
+
+        String redaction = """
+                {
+                  "sequenceNumber": 1,
+                  "redactedFields": ["token"],
+                  "reason": "PII policy",
+                  "approvedBy": "compliance-export"
+                }
+                """;
+
+        mockMvc.perform(post("/audit/redactions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(redaction))
+                .andExpect(status().isOk());
+
+        String exportResponse = mockMvc.perform(get("/audit/exports")
+                        .param("actorId", "actor-exp")
+                        .param("includeArchived", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recordCount").value(2))
+                .andExpect(jsonPath("$.records[0].payload.token").value("[REDACTED]"))
+                .andExpect(jsonPath("$.records[0].redactedFields[0]").value("token"))
+                .andExpect(jsonPath("$.bundleChecksum").isString())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        ObjectNode verifyRequest = objectMapper.createObjectNode();
+        verifyRequest.set("bundle", objectMapper.readTree(exportResponse));
+
+        mockMvc.perform(post("/audit/exports/verify")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(verifyRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.valid").value(true))
+                .andExpect(jsonPath("$.checkedRecords").value(2));
+
+        ObjectNode tamperedBundle = (ObjectNode) objectMapper.readTree(exportResponse);
+        ((ObjectNode) tamperedBundle.get("records").get(0)).put("recordHash", "abcdef");
+        ObjectNode tamperedRequest = objectMapper.createObjectNode();
+        tamperedRequest.set("bundle", tamperedBundle);
+
+        mockMvc.perform(post("/audit/exports/verify")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(tamperedRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.valid").value(false))
+                .andExpect(jsonPath("$.violationType").value("CHECKSUM_MISMATCH"));
+    }
+
+    @Test
+    void exportRequiresActorOrResourceFilter() throws Exception {
+        mockMvc.perform(get("/audit/exports"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("REQUEST_ERROR"));
     }
 }

@@ -8,6 +8,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import com.auditlogservice.domain.AuditRecord;
 import com.auditlogservice.domain.RedactionAudit;
@@ -15,6 +16,9 @@ import com.auditlogservice.dto.AuditEventQueryResponse;
 import com.auditlogservice.dto.AuditEventRequest;
 import com.auditlogservice.dto.AuditEventResponse;
 import com.auditlogservice.dto.AuditVerificationIssue;
+import com.auditlogservice.dto.ExportBundleResponse;
+import com.auditlogservice.dto.ExportBundleVerificationResponse;
+import com.auditlogservice.dto.ExportedAuditRecord;
 import com.auditlogservice.dto.RedactionRequest;
 import com.auditlogservice.dto.RedactionResponse;
 import com.auditlogservice.dto.RetentionRunResponse;
@@ -39,6 +43,7 @@ public class AuditLogService {
     private final RedactionAuditRepository redactionAuditRepository;
     private final AuditChainHasher auditChainHasher;
     private final AuditChainVerifier auditChainVerifier;
+    private final ExportBundleVerifier exportBundleVerifier;
     private final ObjectMapper objectMapper;
     private final int defaultRetentionDays;
 
@@ -46,12 +51,14 @@ public class AuditLogService {
                            RedactionAuditRepository redactionAuditRepository,
                            AuditChainHasher auditChainHasher,
                            AuditChainVerifier auditChainVerifier,
+                           ExportBundleVerifier exportBundleVerifier,
                            ObjectMapper objectMapper,
                            @Value("${audit.retention.days:365}") int defaultRetentionDays) {
         this.auditRecordRepository = auditRecordRepository;
         this.redactionAuditRepository = redactionAuditRepository;
         this.auditChainHasher = auditChainHasher;
         this.auditChainVerifier = auditChainVerifier;
+        this.exportBundleVerifier = exportBundleVerifier;
         this.objectMapper = objectMapper;
         this.defaultRetentionDays = defaultRetentionDays;
     }
@@ -192,8 +199,110 @@ public class AuditLogService {
         return new RetentionRunResponse(archivedCount, retentionDays, cutoffEpochMillis, now);
     }
 
+    public ExportBundleResponse exportBundle(String actorId,
+                                             String resourceType,
+                                             String resourceId,
+                                             boolean includeArchived) {
+        boolean actorFilter = StringUtils.hasText(actorId);
+        boolean resourceFilter = StringUtils.hasText(resourceType) && StringUtils.hasText(resourceId);
+        if (!actorFilter && !resourceFilter) {
+            throw new IllegalArgumentException("Either actorId or both resourceType and resourceId must be provided");
+        }
+
+        Specification<AuditRecord> specification = Specification.where(null);
+        if (actorFilter) {
+            specification = specification.and((root, query, builder) -> builder.equal(root.get("actorId"), actorId));
+        }
+        if (StringUtils.hasText(resourceType)) {
+            specification = specification.and((root, query, builder) -> builder.equal(root.get("resourceType"), resourceType));
+        }
+        if (StringUtils.hasText(resourceId)) {
+            specification = specification.and((root, query, builder) -> builder.equal(root.get("resourceId"), resourceId));
+        }
+        if (!includeArchived) {
+            specification = specification.and((root, query, builder) -> builder.isNull(root.get("archivedAt")));
+        }
+
+        List<AuditRecord> records = auditRecordRepository.findAll(specification, Sort.by(Sort.Direction.ASC, "sequenceNumber"));
+        Map<Long, RedactionAudit> redactionBySequence = latestRedactionsBySequence(records);
+        List<ExportedAuditRecord> exportedRecords = records.stream()
+                .map(record -> toExportedRecord(record, redactionBySequence.get(record.getSequenceNumber())))
+                .toList();
+
+        OffsetDateTime exportedAt = OffsetDateTime.now(ZoneOffset.UTC);
+        AuditVerificationIssue sourceVerification = verify();
+        Long firstSequence = records.isEmpty() ? null : records.getFirst().getSequenceNumber();
+        Long lastSequence = records.isEmpty() ? null : records.getLast().getSequenceNumber();
+        String chainHeadHash = records.isEmpty() ? null : records.getLast().getRecordHash();
+
+        ExportBundleResponse unsigned = new ExportBundleResponse(
+                UUID.randomUUID().toString(),
+                exportedAt,
+                actorId,
+                resourceType,
+                resourceId,
+                includeArchived,
+                exportedRecords.size(),
+                firstSequence,
+                lastSequence,
+                chainHeadHash,
+                sourceVerification.intact(),
+                sourceVerification.checkedRecords(),
+                exportedRecords,
+                null);
+
+        String checksum = exportBundleVerifier.computeChecksum(unsigned);
+        return new ExportBundleResponse(
+                unsigned.exportId(),
+                unsigned.exportedAt(),
+                unsigned.actorId(),
+                unsigned.resourceType(),
+                unsigned.resourceId(),
+                unsigned.includeArchived(),
+                unsigned.recordCount(),
+                unsigned.firstSequenceNumber(),
+                unsigned.lastSequenceNumber(),
+                unsigned.chainHeadHash(),
+                unsigned.sourceChainIntact(),
+                unsigned.sourceCheckedRecords(),
+                unsigned.records(),
+                checksum);
+    }
+
+    public ExportBundleVerificationResponse verifyExportBundle(ExportBundleResponse bundle) {
+        return exportBundleVerifier.verify(bundle);
+    }
+
     public AuditVerificationIssue verify() {
         return auditChainVerifier.verify(auditRecordRepository.findAllByOrderBySequenceNumberAsc());
+    }
+
+    private ExportedAuditRecord toExportedRecord(AuditRecord record, RedactionAudit redactionAudit) {
+        JsonNode payload = parsePayload(record.getPayloadJson()).deepCopy();
+        List<String> redactedFields = List.of();
+        String proofArtifact = null;
+        if (redactionAudit != null) {
+            redactedFields = parseRedactedFields(redactionAudit.getRedactedFieldsJson());
+            proofArtifact = redactionAudit.getProofArtifact();
+            for (String fieldPath : redactedFields) {
+                maskField(payload, fieldPath);
+            }
+        }
+
+        return new ExportedAuditRecord(
+                record.getSequenceNumber(),
+                record.getEventType(),
+                record.getActorId(),
+                record.getResourceType(),
+                record.getResourceId(),
+                payload,
+                OffsetDateTime.ofInstant(java.time.Instant.ofEpochMilli(record.getEventTimestamp()), ZoneOffset.UTC),
+                record.getPrevHash(),
+                record.getRecordHash(),
+                record.getArchivedAt(),
+                record.getRedactionState(),
+                redactedFields,
+                proofArtifact);
     }
 
     private AuditEventResponse toResponse(AuditRecord record, RedactionAudit redactionAudit) {

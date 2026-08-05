@@ -6,6 +6,9 @@ import com.auditlogservice.dto.AuditEventQueryResponse;
 import com.auditlogservice.dto.AuditEventRequest;
 import com.auditlogservice.dto.AuditEventResponse;
 import com.auditlogservice.dto.AuditVerificationIssue;
+import com.auditlogservice.dto.ExportBundleResponse;
+import com.auditlogservice.dto.ExportBundleVerificationResponse;
+import com.auditlogservice.dto.ExportBundleVerifyRequest;
 import com.auditlogservice.dto.RedactionRequest;
 import com.auditlogservice.dto.RedactionResponse;
 import com.auditlogservice.dto.RetentionRunResponse;
@@ -58,6 +61,20 @@ public class AuditLogController {
     @PostMapping("/redactions")
     public ResponseEntity<RedactionResponse> redact(@Valid @RequestBody RedactionRequest request) {
         return ResponseEntity.ok(auditLogService.redact(request));
+    }
+
+    @GetMapping("/exports")
+    public ResponseEntity<ExportBundleResponse> export(
+            @RequestParam(required = false) String actorId,
+            @RequestParam(required = false) String resourceType,
+            @RequestParam(required = false) String resourceId,
+            @RequestParam(defaultValue = "true") boolean includeArchived) {
+        return ResponseEntity.ok(auditLogService.exportBundle(actorId, resourceType, resourceId, includeArchived));
+    }
+
+    @PostMapping("/exports/verify")
+    public ResponseEntity<ExportBundleVerificationResponse> verifyExport(@Valid @RequestBody ExportBundleVerifyRequest request) {
+        return ResponseEntity.ok(auditLogService.verifyExportBundle(request.bundle()));
     }
 
     @GetMapping("/verify")
