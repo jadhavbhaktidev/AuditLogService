@@ -36,6 +36,14 @@ Implemented in this follow-up slice:
 4. Verification compatibility retained because hash source data is not mutated by redaction.
 5. API integration test for nested-field redaction masking and post-redaction chain integrity verification.
 
+Implemented in this additional slice:
+
+1. Bulk export endpoint: `GET /audit/exports` with `actorId` or (`resourceType` + `resourceId`) filters.
+2. Export bundle metadata including record count, sequence boundaries, chain head hash, and source-chain verification snapshot.
+3. Deterministic bundle checksum over export metadata and records.
+4. Offline bundle verification endpoint: `POST /audit/exports/verify`.
+5. Integration tests covering successful export/verify flow, tamper detection via checksum mismatch, and filter validation.
+
 ## Validation Result (Current)
 
 1. Full `mvn test` suite passes.
@@ -43,6 +51,7 @@ Implemented in this follow-up slice:
 3. Including archived records via `includeArchived=true` returns full set.
 4. Chain verification remains intact after legitimate archival.
 5. Full `mvn test` suite passes after redaction workflow addition.
+6. Full `mvn test` suite passes after export and offline verify implementation.
 
 ## Redaction Design Notes (Current)
 
