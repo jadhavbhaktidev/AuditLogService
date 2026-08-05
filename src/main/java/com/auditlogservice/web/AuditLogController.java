@@ -6,6 +6,7 @@ import com.auditlogservice.dto.AuditEventQueryResponse;
 import com.auditlogservice.dto.AuditEventRequest;
 import com.auditlogservice.dto.AuditEventResponse;
 import com.auditlogservice.dto.AuditVerificationIssue;
+import com.auditlogservice.dto.RetentionRunResponse;
 import com.auditlogservice.service.AuditLogService;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -41,9 +42,15 @@ public class AuditLogController {
             @RequestParam(required = false) String eventType,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to,
+            @RequestParam(defaultValue = "false") boolean includeArchived,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(auditLogService.query(actorId, resourceType, resourceId, eventType, from, to, page, size));
+        return ResponseEntity.ok(auditLogService.query(actorId, resourceType, resourceId, eventType, from, to, includeArchived, page, size));
+    }
+
+    @PostMapping("/retention/run")
+    public ResponseEntity<RetentionRunResponse> runRetention(@RequestParam(required = false) Integer days) {
+        return ResponseEntity.ok(auditLogService.runRetention(days));
     }
 
     @GetMapping("/verify")

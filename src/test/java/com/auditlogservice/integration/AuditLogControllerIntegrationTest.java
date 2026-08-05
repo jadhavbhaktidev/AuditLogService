@@ -146,4 +146,70 @@ class AuditLogControllerIntegrationTest {
         JsonNode node = objectMapper.readTree(response);
         assertThat(node.get("expectedValue").asText()).isNotEqualTo(node.get("actualValue").asText());
     }
+
+    @Test
+    void retentionArchivesOlderRecordsWithoutBreakingVerification() throws Exception {
+        String oldEvent = """
+                {
+                  "eventType": "USER_LOGIN",
+                  "actorId": "actor-r",
+                  "resourceType": "ACCOUNT",
+                  "resourceId": "acct-r",
+                  "payload": {"ip": "10.0.0.1"},
+                  "timestamp": "2020-01-01T00:00:00Z"
+                }
+                """;
+
+        String newEvent = """
+                {
+                  "eventType": "USER_LOGIN",
+                  "actorId": "actor-r",
+                  "resourceType": "ACCOUNT",
+                  "resourceId": "acct-r",
+                  "payload": {"ip": "10.0.0.2"},
+                  "timestamp": "2030-01-01T00:00:00Z"
+                }
+                """;
+
+        mockMvc.perform(post("/audit/events")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(oldEvent))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/audit/events")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(newEvent))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/audit/retention/run")
+                        .param("days", "30"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.archivedCount").value(1))
+                .andExpect(jsonPath("$.retentionDays").value(30));
+
+        mockMvc.perform(get("/audit/events")
+                        .param("actorId", "actor-r")
+                        .param("resourceType", "ACCOUNT")
+                        .param("resourceId", "acct-r")
+                        .param("includeArchived", "false")
+                        .param("page", "0")
+                        .param("size", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1));
+
+        mockMvc.perform(get("/audit/events")
+                        .param("actorId", "actor-r")
+                        .param("resourceType", "ACCOUNT")
+                        .param("resourceId", "acct-r")
+                        .param("includeArchived", "true")
+                        .param("page", "0")
+                        .param("size", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(2));
+
+        mockMvc.perform(get("/audit/verify"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.intact").value(true))
+                .andExpect(jsonPath("$.checkedRecords").value(2));
+    }
 }

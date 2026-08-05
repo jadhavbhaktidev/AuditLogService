@@ -9,10 +9,12 @@ import com.auditlogservice.dto.AuditEventQueryResponse;
 import com.auditlogservice.dto.AuditEventRequest;
 import com.auditlogservice.dto.AuditEventResponse;
 import com.auditlogservice.dto.AuditVerificationIssue;
+import com.auditlogservice.dto.RetentionRunResponse;
 import com.auditlogservice.repository.AuditRecordRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -26,15 +28,18 @@ public class AuditLogService {
     private final AuditChainHasher auditChainHasher;
     private final AuditChainVerifier auditChainVerifier;
     private final ObjectMapper objectMapper;
+    private final int defaultRetentionDays;
 
     public AuditLogService(AuditRecordRepository auditRecordRepository,
                            AuditChainHasher auditChainHasher,
                            AuditChainVerifier auditChainVerifier,
-                           ObjectMapper objectMapper) {
+                           ObjectMapper objectMapper,
+                           @Value("${audit.retention.days:365}") int defaultRetentionDays) {
         this.auditRecordRepository = auditRecordRepository;
         this.auditChainHasher = auditChainHasher;
         this.auditChainVerifier = auditChainVerifier;
         this.objectMapper = objectMapper;
+        this.defaultRetentionDays = defaultRetentionDays;
     }
 
     @Transactional
@@ -43,7 +48,9 @@ public class AuditLogService {
         long eventTimestamp = resolvedTimestamp.toInstant().toEpochMilli();
         Long maxSequence = auditRecordRepository.findMaxSequenceNumber();
         long nextSequence = maxSequence + 1;
-        String prevHash = maxSequence == 0 ? AuditChainHasher.GENESIS_PREV_HASH : auditRecordRepository.findAllByOrderBySequenceNumberAsc().getLast().getRecordHash();
+        String prevHash = maxSequence == 0
+                ? AuditChainHasher.GENESIS_PREV_HASH
+                : auditRecordRepository.findAllByOrderBySequenceNumberAsc().getLast().getRecordHash();
         String canonicalPayload = auditChainHasher.canonicalPayload(request, eventTimestamp, prevHash);
         String recordHash = auditChainHasher.sha256Hex(canonicalPayload);
 
@@ -72,6 +79,7 @@ public class AuditLogService {
                                          String eventType,
                                          OffsetDateTime from,
                                          OffsetDateTime to,
+                                         boolean includeArchived,
                                          int page,
                                          int size) {
         Specification<AuditRecord> specification = Specification.where(null);
@@ -93,10 +101,26 @@ public class AuditLogService {
         if (to != null) {
             specification = specification.and((root, query, builder) -> builder.lessThanOrEqualTo(root.get("eventTimestamp"), to.toInstant().toEpochMilli()));
         }
+        if (!includeArchived) {
+            specification = specification.and((root, query, builder) -> builder.isNull(root.get("archivedAt")));
+        }
 
         var pageResult = auditRecordRepository.findAll(specification, PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "sequenceNumber")));
         List<AuditEventResponse> items = pageResult.stream().map(this::toResponse).toList();
         return new AuditEventQueryResponse(items, pageResult.getNumber(), pageResult.getSize(), pageResult.getTotalElements(), pageResult.getTotalPages());
+    }
+
+    @Transactional
+    public RetentionRunResponse runRetention(Integer daysOverride) {
+        int retentionDays = daysOverride != null ? daysOverride : defaultRetentionDays;
+        if (retentionDays < 1) {
+            throw new IllegalStateException("Retention days must be greater than zero");
+        }
+
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        long cutoffEpochMillis = now.minusDays(retentionDays).toInstant().toEpochMilli();
+        int archivedCount = auditRecordRepository.archiveOlderThan(cutoffEpochMillis, now);
+        return new RetentionRunResponse(archivedCount, retentionDays, cutoffEpochMillis, now);
     }
 
     public AuditVerificationIssue verify() {

@@ -85,3 +85,13 @@ Record every meaningful AI interaction used in this project.
   - Human Rationale: Improves confidence in externally visible behavior and makes tamper failures easier to interpret.
   - Validation Performed: Full `mvn test` suite passed (9 tests).
   - Follow-up Actions: Start Scenario B retention policy design and data model extension.
+
+- 2026-08-05:
+  - Task ID: SCENARIO-B-RETENTION-SLICE-1
+  - Prompt Intent: Implement retention policy behavior with archive handling that does not break verification.
+  - Constraints Provided: Preserve append-only semantics and keep chain verification intact.
+  - AI Output Summary: Added retention run endpoint, archival update query, includeArchived query option, and integration test coverage for retention + verify behavior.
+  - Disposition: ACCEPTED
+  - Human Rationale: Delivers the first concrete Scenario B capability with test-backed behavior.
+  - Validation Performed: Full `mvn test` suite passed (10 tests).
+  - Follow-up Actions: Implement structured redaction and bulk export slices.

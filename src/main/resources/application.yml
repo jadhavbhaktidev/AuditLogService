@@ -29,3 +29,7 @@ management:
     health:
       probes:
         enabled: true
+
+audit:
+  retention:
+    days: 365

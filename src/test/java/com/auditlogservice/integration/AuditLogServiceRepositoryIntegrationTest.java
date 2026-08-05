@@ -55,7 +55,7 @@ class AuditLogServiceRepositoryIntegrationTest {
         assertThat(secondResponse.prevHash()).isEqualTo(firstResponse.recordHash());
 
         AuditEventQueryResponse queryResponse = auditLogService.query("actor-1", "ACCOUNT", "acct-1", null,
-                null, null, 0, 20);
+            null, null, false, 0, 20);
         assertThat(queryResponse.totalElements()).isEqualTo(2L);
         assertThat(queryResponse.items()).extracting(AuditEventResponse::sequenceNumber)
                 .containsExactly(1L, 2L);
