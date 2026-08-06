@@ -1,227 +1,214 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 
-const sampleEvent = {
-  eventType: "ACCOUNT_VIEWED",
-  actorId: "ui-user",
-  resourceType: "ACCOUNT",
-  resourceId: "acct-ui",
-  payload: { reason: "frontend-seed", ip: "10.2.0.1" },
-  timestamp: new Date().toISOString()
-};
+const defaultPayload = "{\n  \"reason\": \"support\",\n  \"ip\": \"10.2.0.1\"\n}";
 
 function App() {
-  const [baseUrl, setBaseUrl] = useState(window.location.origin);
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState("Ready.");
+
+  const [eventType, setEventType] = useState("ACCOUNT_VIEWED");
   const [actorId, setActorId] = useState("fresh-demo-user");
-  const [resourceType, setResourceType] = useState("");
-  const [resourceId, setResourceId] = useState("");
-  const [eventType, setEventType] = useState("");
-  const [includeArchived, setIncludeArchived] = useState(false);
-  const [searchText, setSearchText] = useState("");
-  const [timeRange, setTimeRange] = useState("all");
-  const [fromTime, setFromTime] = useState("");
-  const [toTime, setToTime] = useState("");
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [records, setRecords] = useState([]);
-  const [statusText, setStatusText] = useState("Ready.");
-  const [loading, setLoading] = useState(false);
+  const [resourceType, setResourceType] = useState("ACCOUNT");
+  const [resourceId, setResourceId] = useState("acct-ui-1");
+  const [payloadText, setPayloadText] = useState(defaultPayload);
 
-  const apiRoot = useMemo(() => baseUrl.replace(/\/$/, ""), [baseUrl]);
+  const [queryActorId, setQueryActorId] = useState("");
+  const [queryResourceType, setQueryResourceType] = useState("");
+  const [queryResourceId, setQueryResourceId] = useState("");
+  const [queryEventType, setQueryEventType] = useState("");
+  const [queryFrom, setQueryFrom] = useState("");
+  const [queryTo, setQueryTo] = useState("");
+  const [queryIncludeArchived, setQueryIncludeArchived] = useState(false);
+  const [queryPage, setQueryPage] = useState(0);
+  const [querySize, setQuerySize] = useState(20);
 
-  async function request(path, options = {}) {
+  const [allRecords, setAllRecords] = useState([]);
+  const [queryResult, setQueryResult] = useState(null);
+  const [verifyResult, setVerifyResult] = useState(null);
+  const [retentionDays, setRetentionDays] = useState("30");
+  const [retentionResult, setRetentionResult] = useState(null);
+
+  const [redactSequenceNumber, setRedactSequenceNumber] = useState("");
+  const [redactFields, setRedactFields] = useState("email,token");
+  const [redactReason, setRedactReason] = useState("PII policy");
+  const [redactApprovedBy, setRedactApprovedBy] = useState("compliance-approver");
+  const [redactionResult, setRedactionResult] = useState(null);
+
+  const [exportBundleText, setExportBundleText] = useState("");
+  const [exportVerifyResult, setExportVerifyResult] = useState(null);
+
+  const apiRoot = useMemo(() => window.location.origin.replace(/\/$/, ""), []);
+
+  function toIso(value) {
+    return value ? new Date(value).toISOString() : "";
+  }
+
+  async function callApi(path, options = {}) {
+    const response = await fetch(`${apiRoot}${path}`, {
+      headers: { "Content-Type": "application/json" },
+      ...options
+    });
+    const text = await response.text();
+    let json = null;
     try {
-      const response = await fetch(`${apiRoot}${path}`, {
-        headers: { "Content-Type": "application/json" },
-        ...options
-      });
-      const text = await response.text();
-      return { ok: response.ok, status: response.status, text };
-    } catch (error) {
-      return { ok: false, status: 0, text: String(error) };
+      json = text ? JSON.parse(text) : null;
+    } catch {
+      json = null;
     }
+    return { ok: response.ok, status: response.status, statusText: response.statusText, text, json };
   }
 
-  function toIsoOrBlank(value) {
-    if (!value) {
-      return "";
-    }
-    return new Date(value).toISOString();
-  }
-
-  function toLocalDateTime(date) {
-    const pad = (value) => String(value).padStart(2, "0");
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-  }
-
-  function applyPresetRange(range) {
-    const now = new Date();
-    const todayStart = toStartOfDay(now);
-    const yesterdayStart = new Date(todayStart);
-    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
-    const weekStart = new Date(todayStart);
-    weekStart.setDate(weekStart.getDate() - 7);
-
-    if (range === "today") {
-      setFromTime(toLocalDateTime(todayStart));
-      setToTime(toLocalDateTime(now));
-      return;
-    }
-    if (range === "yesterday") {
-      const yesterdayEnd = new Date(todayStart);
-      yesterdayEnd.setMilliseconds(-1);
-      setFromTime(toLocalDateTime(yesterdayStart));
-      setToTime(toLocalDateTime(yesterdayEnd));
-      return;
-    }
-    if (range === "7days") {
-      setFromTime(toLocalDateTime(weekStart));
-      setToTime(toLocalDateTime(now));
-      return;
-    }
-    if (range === "all") {
-      setFromTime("");
-      setToTime("");
-    }
-  }
-
-  function toStartOfDay(date) {
-    const copy = new Date(date);
-    copy.setHours(0, 0, 0, 0);
-    return copy;
-  }
-
-  function formatCreationTime(timestamp) {
-    const now = new Date();
-    const input = new Date(timestamp);
-    const todayStart = toStartOfDay(now);
-    const yesterdayStart = new Date(todayStart);
-    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
-    const dayLabel = input >= todayStart ? "Today" : input >= yesterdayStart ? "Yesterday" : input.toLocaleDateString();
-    return `${dayLabel}, ${input.toLocaleTimeString()}`;
-  }
-
-  function operationLabel(eventType) {
-    return eventType
-      .toLowerCase()
-      .split("_")
-      .map((part) => part[0].toUpperCase() + part.slice(1))
-      .join(" ");
-  }
-
-  function originLabel(record) {
-    const ip = record?.payload?.ip;
-    if (typeof ip === "string" && ip.length > 0) {
-      return `${ip} (GUI)`;
-    }
-    return "audit-service (API)";
-  }
-
-  async function loadEvents() {
-    setLoading(true);
+  async function runAction(action) {
+    setBusy(true);
     try {
-      const params = new URLSearchParams({
-        includeArchived: String(includeArchived),
-        page: "0",
-        size: "100"
-      });
-      if (actorId.trim()) {
-        params.set("actorId", actorId.trim());
-      }
-      if (resourceType.trim()) {
-        params.set("resourceType", resourceType.trim());
-      }
-      if (resourceId.trim()) {
-        params.set("resourceId", resourceId.trim());
-      }
-      if (eventType.trim()) {
-        params.set("eventType", eventType.trim());
-      }
-      if (fromTime) {
-        params.set("from", toIsoOrBlank(fromTime));
-      }
-      if (toTime) {
-        params.set("to", toIsoOrBlank(toTime));
-      }
-
-      const response = await fetch(`${apiRoot}/audit/events?${params.toString()}`);
-      const text = await response.text();
-      if (!response.ok) {
-        setStatusText(`Failed to load records (${response.status}).`);
-        return;
-      }
-      const body = JSON.parse(text);
-      setRecords(Array.isArray(body.items) ? body.items : []);
-      setStatusText(`Loaded ${Array.isArray(body.items) ? body.items.length : 0} records.`);
+      await action();
     } catch (error) {
-      setStatusText(`Request failed: ${String(error)}`);
+      setStatus(`Request failed: ${String(error)}`);
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
   }
 
-  async function seedOneRecord() {
-    setLoading(true);
-    const event = {
-      ...sampleEvent,
-      actorId,
-      resourceId: `acct-ui-${Math.floor(Math.random() * 10000)}`,
+  function setRequestStatus(result, successMessage) {
+    if (result.ok) {
+      setStatus(successMessage);
+    } else {
+      setStatus(`${result.status} ${result.statusText}`);
+    }
+  }
+
+  async function loadFilterOptions() {
+    const result = await callApi("/audit/events?includeArchived=true&page=0&size=300");
+    if (result.ok && result.json && Array.isArray(result.json.items)) {
+      setAllRecords(result.json.items);
+    }
+  }
+
+  async function createEvent() {
+    const payload = JSON.parse(payloadText);
+    const body = {
+      eventType: eventType.trim(),
+      actorId: actorId.trim(),
+      resourceType: resourceType.trim(),
+      resourceId: resourceId.trim(),
+      payload,
       timestamp: new Date().toISOString()
     };
-    try {
-      const result = await request("/audit/events", { method: "POST", body: JSON.stringify(event) });
-      if (!result.ok) {
-        setStatusText(`Seed failed (${result.status}).`);
-        return;
-      }
-      setStatusText("Seeded one record.");
-      await loadEvents();
-    } finally {
-      setLoading(false);
+    const result = await callApi("/audit/events", { method: "POST", body: JSON.stringify(body) });
+    setRequestStatus(result, "Event created.");
+    if (result.ok) {
+      setQueryPage(0);
+      await queryEvents(0);
+      await loadFilterOptions();
+    }
+  }
+
+  function buildQueryParams(pageNumber) {
+    const params = new URLSearchParams({
+      includeArchived: String(queryIncludeArchived),
+      page: String(pageNumber),
+      size: String(querySize)
+    });
+    if (queryActorId.trim()) {
+      params.set("actorId", queryActorId.trim());
+    }
+    if (queryResourceType.trim()) {
+      params.set("resourceType", queryResourceType.trim());
+    }
+    if (queryResourceId.trim()) {
+      params.set("resourceId", queryResourceId.trim());
+    }
+    if (queryEventType.trim()) {
+      params.set("eventType", queryEventType.trim());
+    }
+    if (queryFrom) {
+      params.set("from", toIso(queryFrom));
+    }
+    if (queryTo) {
+      params.set("to", toIso(queryTo));
+    }
+    return params;
+  }
+
+  async function queryEvents(pageNumber = queryPage) {
+    const params = buildQueryParams(pageNumber);
+    const result = await callApi(`/audit/events?${params.toString()}`);
+    setRequestStatus(result, `Query loaded (page ${pageNumber}).`);
+    if (result.ok && result.json) {
+      setQueryResult(result.json);
+      setQueryPage(pageNumber);
     }
   }
 
   async function verifyChain() {
-    setLoading(true);
-    try {
-      const result = await request("/audit/verify");
-      if (!result.ok) {
-        setStatusText(`Verify failed (${result.status}).`);
-        return;
-      }
-      const body = JSON.parse(result.text);
-      setStatusText(body.intact ? `Chain intact across ${body.checkedRecords} records.` : "Chain verification detected inconsistency.");
-    } finally {
-      setLoading(false);
+    const result = await callApi("/audit/verify");
+    setRequestStatus(result, "Verification loaded.");
+    if (result.ok && result.json) {
+      setVerifyResult(result.json);
     }
   }
 
-  async function exportBundle() {
-    setLoading(true);
-    try {
-      const actor = actorId.trim();
-      const type = resourceType.trim();
-      const resource = resourceId.trim();
-      const hasActor = actor.length > 0;
-      const hasResourcePair = type.length > 0 && resource.length > 0;
-      if (!hasActor && !hasResourcePair) {
-        setStatusText("Export requires actorId OR resourceType + resourceId.");
-        return;
-      }
-      const params = new URLSearchParams({ includeArchived: "true" });
-      if (hasActor) {
-        params.set("actorId", actor);
-      } else {
-        params.set("resourceType", type);
-        params.set("resourceId", resource);
-      }
-      const result = await request(`/audit/exports?${params.toString()}`);
-      if (!result.ok) {
-        setStatusText(`Export failed (${result.status}).`);
-        return;
-      }
-      const bundle = JSON.parse(result.text);
-      const fileName = `audit-export-${bundle.exportId ?? Date.now()}.json`;
-      const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
+  async function runRetention() {
+    const days = retentionDays.trim();
+    const query = days ? `?days=${encodeURIComponent(days)}` : "";
+    const result = await callApi(`/audit/retention/run${query}`, { method: "POST" });
+    setRequestStatus(result, "Retention completed.");
+    if (result.ok && result.json) {
+      setRetentionResult(result.json);
+      await queryEvents(0);
+      await loadFilterOptions();
+    }
+  }
+
+  async function applyRedaction() {
+    const sequenceNumber = Number(redactSequenceNumber);
+    const redactedFields = redactFields
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    const body = {
+      sequenceNumber,
+      redactedFields,
+      reason: redactReason.trim(),
+      approvedBy: redactApprovedBy.trim()
+    };
+    const result = await callApi("/audit/redactions", { method: "POST", body: JSON.stringify(body) });
+    setRequestStatus(result, "Redaction applied.");
+    if (result.ok && result.json) {
+      setRedactionResult(result.json);
+      await queryEvents(queryPage);
+      await loadFilterOptions();
+    }
+  }
+
+  async function exportBundleFromQuery() {
+    const actor = queryActorId.trim();
+    const type = queryResourceType.trim();
+    const resource = queryResourceId.trim();
+    const hasActor = actor.length > 0;
+    const hasResourcePair = type.length > 0 && resource.length > 0;
+    if (!hasActor && !hasResourcePair) {
+      setStatus("Export requires actorId OR resourceType + resourceId.");
+      return;
+    }
+
+    const params = new URLSearchParams({ includeArchived: String(queryIncludeArchived) });
+    if (hasActor) {
+      params.set("actorId", actor);
+    } else {
+      params.set("resourceType", type);
+      params.set("resourceId", resource);
+    }
+    const result = await callApi(`/audit/exports?${params.toString()}`);
+    setRequestStatus(result, "Export bundle generated.");
+    if (result.ok && result.json) {
+      const bundleText = JSON.stringify(result.json, null, 2);
+      setExportBundleText(bundleText);
+
+      const fileName = `audit-export-${result.json.exportId ?? Date.now()}.json`;
+      const blob = new Blob([bundleText], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
@@ -230,170 +217,236 @@ function App() {
       anchor.click();
       anchor.remove();
       URL.revokeObjectURL(url);
-      setStatusText(`Exported ${bundle.recordCount ?? 0} records to ${fileName}.`);
-    } finally {
-      setLoading(false);
     }
   }
 
-  useEffect(() => {
-    loadEvents();
-  }, []);
-
-  useEffect(() => {
-    if (timeRange !== "custom") {
-      applyPresetRange(timeRange);
+  async function verifyExportBundle() {
+    const bundle = JSON.parse(exportBundleText);
+    const body = bundle.bundle ? bundle : { bundle };
+    const result = await callApi("/audit/exports/verify", { method: "POST", body: JSON.stringify(body) });
+    setRequestStatus(result, "Export verification complete.");
+    if (result.ok && result.json) {
+      setExportVerifyResult(result.json);
     }
-  }, [timeRange]);
+  }
 
-  const filteredRows = useMemo(() => {
-    return records.filter((record) => {
-      if (!searchText.trim()) {
+  const items = queryResult?.items ?? [];
+  const totalPages = queryResult?.totalPages ?? 0;
+  const canPrev = queryPage > 0;
+  const canNext = queryPage + 1 < totalPages;
+
+  const actorOptions = useMemo(
+    () => Array.from(new Set(allRecords.map((row) => row.actorId).filter(Boolean))).sort(),
+    [allRecords]
+  );
+
+  const resourceTypeOptions = useMemo(
+    () => Array.from(new Set(allRecords.map((row) => row.resourceType).filter(Boolean))).sort(),
+    [allRecords]
+  );
+
+  const resourceIdOptions = useMemo(() => {
+    const candidates = allRecords.filter((row) => {
+      if (!row.resourceId) {
+        return false;
+      }
+      if (!queryResourceType) {
         return true;
       }
-      const haystack = [
-        String(record.sequenceNumber),
-        record.eventType,
-        record.actorId,
-        record.resourceType,
-        record.resourceId,
-        JSON.stringify(record.payload ?? {})
-      ]
-        .join(" ")
-        .toLowerCase();
-      return haystack.includes(searchText.toLowerCase());
+      return row.resourceType === queryResourceType;
     });
-  }, [records, searchText]);
+    return Array.from(new Set(candidates.map((row) => row.resourceId))).sort();
+  }, [allRecords, queryResourceType]);
+
+  const eventTypeOptions = useMemo(
+    () => Array.from(new Set(allRecords.map((row) => row.eventType).filter(Boolean))).sort(),
+    [allRecords]
+  );
+
+  useEffect(() => {
+    runAction(async () => {
+      await queryEvents(0);
+      await loadFilterOptions();
+    });
+  }, []);
 
   return (
-    <div className="auditShell">
-      <header className="titleBar">
-        <h1>Audit Log System</h1>
-        <span className="infoBadge" title="Audit trail console">i</span>
-      </header>
+    <div className="page">
+      <h1>Audit Log UI</h1>
 
-      <section className="toolbar">
-        <div className="toolbarLeft">
-          <label className="inlineField">
-            <span>Stored filters</span>
-            <select>
-              <option>All</option>
-            </select>
-          </label>
-          <label className="inlineField">
-            <span>Time range</span>
-            <select value={timeRange} onChange={(e) => setTimeRange(e.target.value)}>
-              <option value="all">All</option>
-              <option value="today">Today</option>
-              <option value="yesterday">Yesterday</option>
-              <option value="7days">Last 7 days</option>
-              <option value="custom">Custom</option>
-            </select>
-          </label>
+      <section className="panel">
+        <h2>Create Event</h2>
+        <div className="grid cols4">
+          <label>Event Type<input value={eventType} onChange={(e) => setEventType(e.target.value)} /></label>
+          <label>Actor ID<input value={actorId} onChange={(e) => setActorId(e.target.value)} /></label>
+          <label>Resource Type<input value={resourceType} onChange={(e) => setResourceType(e.target.value)} /></label>
+          <label>Resource ID<input value={resourceId} onChange={(e) => setResourceId(e.target.value)} /></label>
         </div>
-
-        <div className="toolbarRight">
-          <input
-            className="searchInput"
-            placeholder="Search"
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-          />
-          <button className="ghostBtn" type="button">Save as</button>
-          <button className="ghostBtn" type="button" disabled>Delete</button>
-          <button className="ghostBtn" type="button" onClick={() => setSearchText("")}>Reset</button>
-          <button className="advancedToggle" type="button" onClick={() => setShowAdvanced((v) => !v)}>
-            <span>{showAdvanced ? "▾" : "▸"}</span> Advanced filter
-          </button>
-        </div>
+        <label>
+          Payload JSON
+          <textarea rows={6} value={payloadText} onChange={(e) => setPayloadText(e.target.value)} />
+        </label>
+        <button onClick={() => runAction(createEvent)} disabled={busy}>Create</button>
       </section>
 
-      {showAdvanced ? (
-        <section className="advancedPanel">
+      <section className="panel">
+        <h2>Query Events</h2>
+        <div className="grid cols4">
           <label>
-            API base URL
-            <input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} />
+            Actor ID
+            <select value={queryActorId} onChange={(e) => setQueryActorId(e.target.value)}>
+              <option value="">All</option>
+              {actorOptions.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
           </label>
           <label>
-            Actor
-            <input value={actorId} onChange={(e) => setActorId(e.target.value)} />
-          </label>
-          <label>
-            Resource type
-            <input value={resourceType} onChange={(e) => setResourceType(e.target.value)} placeholder="ACCOUNT" />
+            Resource Type
+            <select
+              value={queryResourceType}
+              onChange={(e) => {
+                const nextType = e.target.value;
+                setQueryResourceType(nextType);
+                if (nextType && queryResourceId) {
+                  const hasMatch = allRecords.some(
+                    (row) => row.resourceType === nextType && row.resourceId === queryResourceId
+                  );
+                  if (!hasMatch) {
+                    setQueryResourceId("");
+                  }
+                }
+              }}
+            >
+              <option value="">All</option>
+              {resourceTypeOptions.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
           </label>
           <label>
             Resource ID
-            <input value={resourceId} onChange={(e) => setResourceId(e.target.value)} placeholder="acct-1" />
+            <select value={queryResourceId} onChange={(e) => setQueryResourceId(e.target.value)}>
+              <option value="">All</option>
+              {resourceIdOptions.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
           </label>
           <label>
-            Event type
-            <input value={eventType} onChange={(e) => setEventType(e.target.value)} placeholder="ACCOUNT_VIEWED" />
+            Event Type
+            <select value={queryEventType} onChange={(e) => setQueryEventType(e.target.value)}>
+              <option value="">All</option>
+              {eventTypeOptions.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
           </label>
-          <label>
-            From (ISO window)
-            <input type="datetime-local" value={fromTime} onChange={(e) => setFromTime(e.target.value)} />
-          </label>
-          <label>
-            To (ISO window)
-            <input type="datetime-local" value={toTime} onChange={(e) => setToTime(e.target.value)} />
-          </label>
-          <label className="checkOption">
-            <input
-              type="checkbox"
-              checked={includeArchived}
-              onChange={(e) => setIncludeArchived(e.target.checked)}
-            />
-            Include archived
-          </label>
-          <div className="advancedActions">
-            <button className="smallBtn" onClick={loadEvents} disabled={loading}>Refresh</button>
-            <button className="smallBtn" onClick={seedOneRecord} disabled={loading}>Seed</button>
-            <button className="smallBtn" onClick={verifyChain} disabled={loading}>Verify</button>
-          </div>
-        </section>
-      ) : null}
+          <label>From<input type="datetime-local" value={queryFrom} onChange={(e) => setQueryFrom(e.target.value)} /></label>
+          <label>To<input type="datetime-local" value={queryTo} onChange={(e) => setQueryTo(e.target.value)} /></label>
+          <label>Page<input type="number" min={0} value={queryPage} onChange={(e) => setQueryPage(Number(e.target.value))} /></label>
+          <label>Size<input type="number" min={1} max={100} value={querySize} onChange={(e) => setQuerySize(Number(e.target.value))} /></label>
+        </div>
+        <label className="inline">
+          <input type="checkbox" checked={queryIncludeArchived} onChange={(e) => setQueryIncludeArchived(e.target.checked)} />
+          Include Archived
+        </label>
+        <div className="row">
+          <button onClick={() => runAction(() => queryEvents(queryPage))} disabled={busy}>Search</button>
+          <button onClick={() => runAction(exportBundleFromQuery)} disabled={busy}>Export</button>
+          <button onClick={() => runAction(() => queryEvents(queryPage - 1))} disabled={busy || !canPrev}>Previous</button>
+          <button onClick={() => runAction(() => queryEvents(queryPage + 1))} disabled={busy || !canNext}>Next</button>
+        </div>
 
-      <div className="actionStrip">
-        <button className="ghostBtn" onClick={exportBundle} disabled={loading}>Export</button>
-      </div>
-
-      <section className="gridWrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Id...</th>
-              <th>Creation Time</th>
-              <th>Operation</th>
-              <th>User</th>
-              <th>Resource Type</th>
-              <th>Resource ID</th>
-              <th>Origin</th>
-              <th>Extra Details</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredRows.length === 0 ? (
+        <div className="tableWrap">
+          <table>
+            <thead>
               <tr>
-                <td colSpan={8} className="emptyCell">{loading ? "Loading records..." : "No audit records."}</td>
+                <th>Seq</th>
+                <th>Event Type</th>
+                <th>Actor</th>
+                <th>Resource Type</th>
+                <th>Resource ID</th>
+                <th>Timestamp</th>
+                <th>Record Hash</th>
               </tr>
-            ) : filteredRows.map((record) => (
-              <tr key={record.id}>
-                <td>{record.sequenceNumber}</td>
-                <td>{formatCreationTime(record.timestamp)}</td>
-                <td>{operationLabel(record.eventType)}</td>
-                <td>{record.actorId}</td>
-                <td>{record.resourceType}</td>
-                <td>{record.resourceId}</td>
-                <td>{originLabel(record)}</td>
-                <td className="truncate">{JSON.stringify(record.payload ?? {})}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {items.length === 0 ? (
+                <tr><td colSpan={7} className="empty">No records</td></tr>
+              ) : items.map((item) => (
+                <tr key={`${item.sequenceNumber}-${item.id}`}>
+                  <td>{item.sequenceNumber}</td>
+                  <td>{item.eventType}</td>
+                  <td>{item.actorId}</td>
+                  <td>{item.resourceType}</td>
+                  <td>{item.resourceId}</td>
+                  <td>{item.timestamp}</td>
+                  <td className="mono truncate">{item.recordHash}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="meta">Page {queryResult?.page ?? 0} / {Math.max((queryResult?.totalPages ?? 1) - 1, 0)} | Total {queryResult?.totalElements ?? 0}</p>
       </section>
 
-      <div className="statusBar">{loading ? "Working..." : statusText}</div>
+      <section className="panel">
+        <h2>Verify Chain</h2>
+        <button onClick={() => runAction(verifyChain)} disabled={busy}>Verify</button>
+        {verifyResult ? (
+          <div className="result">
+            <p>Intact: {String(verifyResult.intact)}</p>
+            <p>Checked Records: {verifyResult.checkedRecords}</p>
+            <p>Violation Type: {verifyResult.violationType ?? "-"}</p>
+            <p>First Bad Sequence: {verifyResult.firstBadSequenceNumber ?? "-"}</p>
+          </div>
+        ) : null}
+      </section>
+
+      <section className="panel">
+        <h2>Retention and Redaction</h2>
+        <div className="row blockTop">
+          <label>Retention Days<input value={retentionDays} onChange={(e) => setRetentionDays(e.target.value)} /></label>
+          <button onClick={() => runAction(runRetention)} disabled={busy}>Run Retention</button>
+        </div>
+        {retentionResult ? (
+          <p className="meta">Archived: {retentionResult.archivedCount} | Retention Days: {retentionResult.retentionDays}</p>
+        ) : null}
+
+        <div className="grid cols4 blockTop">
+          <label>Sequence Number<input value={redactSequenceNumber} onChange={(e) => setRedactSequenceNumber(e.target.value)} /></label>
+          <label>Fields (comma-separated)<input value={redactFields} onChange={(e) => setRedactFields(e.target.value)} /></label>
+          <label>Reason<input value={redactReason} onChange={(e) => setRedactReason(e.target.value)} /></label>
+          <label>Approved By<input value={redactApprovedBy} onChange={(e) => setRedactApprovedBy(e.target.value)} /></label>
+        </div>
+        <button onClick={() => runAction(applyRedaction)} disabled={busy}>Apply Redaction</button>
+        {redactionResult ? (
+          <div className="result">
+            <p>Sequence Number: {redactionResult.sequenceNumber}</p>
+            <p>State: {redactionResult.redactionState}</p>
+            <p>Fields: {(redactionResult.redactedFields ?? []).join(", ")}</p>
+          </div>
+        ) : null}
+      </section>
+
+      <section className="panel">
+        <h2>Verify Export Bundle</h2>
+        <label>
+          Export Bundle JSON
+          <textarea rows={8} value={exportBundleText} onChange={(e) => setExportBundleText(e.target.value)} />
+        </label>
+        <button onClick={() => runAction(verifyExportBundle)} disabled={busy}>Verify Export Bundle</button>
+        {exportVerifyResult ? (
+          <div className="result">
+            <p>Valid: {String(exportVerifyResult.valid)}</p>
+            <p>Checked Records: {exportVerifyResult.checkedRecords}</p>
+            <p>Violation Type: {exportVerifyResult.violationType ?? "-"}</p>
+          </div>
+        ) : null}
+      </section>
+
+      <div className="status">{busy ? "Working..." : status}</div>
     </div>
   );
 }
