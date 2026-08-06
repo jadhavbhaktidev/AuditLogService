@@ -16,6 +16,8 @@ import com.auditlogservice.dto.AuditEventQueryResponse;
 import com.auditlogservice.dto.AuditEventRequest;
 import com.auditlogservice.dto.AuditEventResponse;
 import com.auditlogservice.dto.AuditVerificationIssue;
+import com.auditlogservice.dto.ComplianceReportItem;
+import com.auditlogservice.dto.ComplianceReportResponse;
 import com.auditlogservice.dto.ExportBundleResponse;
 import com.auditlogservice.dto.ExportBundleVerificationResponse;
 import com.auditlogservice.dto.ExportedAuditRecord;
@@ -271,6 +273,68 @@ public class AuditLogService {
 
     public ExportBundleVerificationResponse verifyExportBundle(ExportBundleResponse bundle) {
         return exportBundleVerifier.verify(bundle);
+    }
+
+    public ComplianceReportResponse complianceReport(String actorId,
+                                                     String resourceId,
+                                                     OffsetDateTime from,
+                                                     OffsetDateTime to,
+                                                     boolean includeArchived,
+                                                     int page,
+                                                     int size) {
+        if (from == null || to == null) {
+            throw new IllegalArgumentException("Both from and to timestamps are required");
+        }
+        if (from.isAfter(to)) {
+            throw new IllegalArgumentException("from timestamp must be less than or equal to to timestamp");
+        }
+        if (!StringUtils.hasText(actorId) && !StringUtils.hasText(resourceId)) {
+            throw new IllegalArgumentException("Either actorId or resourceId must be provided");
+        }
+
+        AuditEventQueryResponse eventQuery = query(
+                actorId,
+                "ACCOUNT",
+                resourceId,
+                null,
+                from,
+                to,
+                includeArchived,
+                page,
+                size);
+
+        List<ComplianceReportItem> items = eventQuery.items().stream()
+                .map(item -> new ComplianceReportItem(
+                        item.sequenceNumber(),
+                        item.eventType(),
+                        item.actorId(),
+                        item.resourceId(),
+                        item.payload(),
+                        item.timestamp(),
+                        item.recordHash()))
+                .toList();
+
+        AuditVerificationIssue chainState = verify();
+        Long firstSequence = items.isEmpty() ? null : items.getFirst().sequenceNumber();
+        Long lastSequence = items.isEmpty() ? null : items.getLast().sequenceNumber();
+
+        return new ComplianceReportResponse(
+                OffsetDateTime.now(ZoneOffset.UTC),
+                "ACCOUNT",
+                actorId,
+                resourceId,
+                from,
+                to,
+                includeArchived,
+                eventQuery.page(),
+                eventQuery.size(),
+                eventQuery.totalElements(),
+                eventQuery.totalPages(),
+                firstSequence,
+                lastSequence,
+                chainState.intact(),
+                chainState.checkedRecords(),
+                items);
     }
 
     public AuditVerificationIssue verify() {

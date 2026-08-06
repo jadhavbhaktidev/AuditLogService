@@ -6,6 +6,7 @@ import com.auditlogservice.dto.AuditEventQueryResponse;
 import com.auditlogservice.dto.AuditEventRequest;
 import com.auditlogservice.dto.AuditEventResponse;
 import com.auditlogservice.dto.AuditVerificationIssue;
+import com.auditlogservice.dto.ComplianceReportResponse;
 import com.auditlogservice.dto.ExportBundleResponse;
 import com.auditlogservice.dto.ExportBundleVerificationResponse;
 import com.auditlogservice.dto.ExportBundleVerifyRequest;
@@ -75,6 +76,18 @@ public class AuditLogController {
     @PostMapping("/exports/verify")
     public ResponseEntity<ExportBundleVerificationResponse> verifyExport(@Valid @RequestBody ExportBundleVerifyRequest request) {
         return ResponseEntity.ok(auditLogService.verifyExportBundle(request.bundle()));
+    }
+
+    @GetMapping("/compliance/report")
+    public ResponseEntity<ComplianceReportResponse> complianceReport(
+            @RequestParam(required = false) String actorId,
+            @RequestParam(required = false) String resourceId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to,
+            @RequestParam(defaultValue = "true") boolean includeArchived,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(auditLogService.complianceReport(actorId, resourceId, from, to, includeArchived, page, size));
     }
 
     @GetMapping("/verify")
