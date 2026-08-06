@@ -380,4 +380,92 @@ class AuditLogControllerIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("REQUEST_ERROR"));
     }
+
+    @Test
+    void complianceReportReturnsFilteredAccountAccessesWithIntegritySummary() throws Exception {
+        String eventA = """
+                {
+                  "eventType": "ACCOUNT_VIEWED",
+                  "actorId": "actor-comp",
+                  "resourceType": "ACCOUNT",
+                  "resourceId": "acct-comp-1",
+                  "payload": {"reason": "support", "token": "sensitive-value"},
+                  "timestamp": "2026-08-05T14:00:00Z"
+                }
+                """;
+
+        String eventB = """
+                {
+                  "eventType": "ACCOUNT_UPDATED",
+                  "actorId": "actor-comp",
+                  "resourceType": "ACCOUNT",
+                  "resourceId": "acct-comp-2",
+                  "payload": {"reason": "ops"},
+                  "timestamp": "2026-08-05T14:05:00Z"
+                }
+                """;
+
+        String eventOther = """
+                {
+                  "eventType": "POLICY_VIEWED",
+                  "actorId": "actor-comp",
+                  "resourceType": "POLICY",
+                  "resourceId": "policy-1",
+                  "payload": {"reason": "ops"},
+                  "timestamp": "2026-08-05T14:10:00Z"
+                }
+                """;
+
+        mockMvc.perform(post("/audit/events").contentType(MediaType.APPLICATION_JSON).content(eventA))
+                .andExpect(status().isCreated());
+        mockMvc.perform(post("/audit/events").contentType(MediaType.APPLICATION_JSON).content(eventB))
+                .andExpect(status().isCreated());
+        mockMvc.perform(post("/audit/events").contentType(MediaType.APPLICATION_JSON).content(eventOther))
+                .andExpect(status().isCreated());
+
+        String redaction = """
+                {
+                  "sequenceNumber": 1,
+                  "redactedFields": ["token"],
+                  "reason": "compliance policy",
+                  "approvedBy": "compliance-2"
+                }
+                """;
+
+        mockMvc.perform(post("/audit/redactions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(redaction))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/audit/compliance/report")
+                        .param("actorId", "actor-comp")
+                        .param("from", "2026-08-05T13:59:00Z")
+                        .param("to", "2026-08-05T14:06:00Z")
+                        .param("includeArchived", "true")
+                        .param("page", "0")
+                        .param("size", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.resourceType").value("ACCOUNT"))
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.items[0].payload.token").value("[REDACTED]"))
+                .andExpect(jsonPath("$.items[0].resourceId").value("acct-comp-1"))
+                .andExpect(jsonPath("$.items[1].resourceId").value("acct-comp-2"))
+                .andExpect(jsonPath("$.sourceChainIntact").value(true));
+    }
+
+    @Test
+    void complianceReportRequiresScopeAndValidDateRange() throws Exception {
+        mockMvc.perform(get("/audit/compliance/report")
+                        .param("from", "2026-08-05T14:00:00Z")
+                        .param("to", "2026-08-05T14:30:00Z"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("REQUEST_ERROR"));
+
+        mockMvc.perform(get("/audit/compliance/report")
+                        .param("actorId", "actor-comp")
+                        .param("from", "2026-08-05T14:30:00Z")
+                        .param("to", "2026-08-05T14:00:00Z"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("REQUEST_ERROR"));
+    }
 }
