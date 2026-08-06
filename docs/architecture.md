@@ -7,7 +7,7 @@
    - Write endpoint (append only)
    - Query endpoint (filters + pagination)
    - Verify endpoint
-   - Extension endpoints (retention/redaction/export)
+   - Extension endpoints (retention/redaction/export/compliance-report)
 2. Domain Layer
    - Spring services for orchestration and policy enforcement
    - Event validation
@@ -17,7 +17,7 @@
 3. Persistence Layer
    - PostgreSQL + Spring Data JPA repositories
    - Append-only event table/store
-   - Optional archive table/store
+   - Archive marker on primary records
    - Audit metadata for redaction and retention actions
 4. Verification Utilities
    - Full-chain verifier
@@ -60,6 +60,24 @@
 - approved_at
 - proof_artifact
 
+## API Surface (Implemented)
+
+1. `POST /audit/events`
+2. `GET /audit/events`
+3. `GET /audit/verify`
+4. `POST /audit/retention/run`
+5. `POST /audit/redactions`
+6. `GET /audit/exports`
+7. `POST /audit/exports/verify`
+8. `GET /audit/compliance/report`
+
+## Scenario C Report Scope
+
+1. Compliance report is currently constrained to `resourceType = ACCOUNT`.
+2. Endpoint requires bounded time range (`from`, `to`).
+3. Endpoint requires one scope key (`actorId` or `resourceId`).
+4. Response includes integrity summary from chain verification.
+
 ## Hash Chain Design
 
 1. Genesis prev_hash constant for first record.
@@ -95,3 +113,9 @@
 1. Single service process, stateless API tier.
 2. Database transaction boundaries centered on append operation and sequence allocation.
 3. Prefer optimistic locking and unique constraints to protect chain ordering guarantees.
+
+## Quality Gate Integration
+
+1. Checkstyle and SpotBugs run in Maven `verify` lifecycle.
+2. OWASP dependency-check runs via Maven `security-scan` profile.
+3. GitHub Actions executes both verification and dependency scan workflows.
