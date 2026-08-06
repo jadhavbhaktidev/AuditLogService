@@ -7,8 +7,9 @@ This repository contains a production-style prototype of a tamper-evident audit 
 1. Install prerequisites listed in `docs/setup.md`.
 2. Configure environment variables from `.env.example`.
 3. Start the service.
-4. Run tests.
+4. Run tests and static analysis (`mvn verify`).
 5. Run the tamper-evidence demo flow.
+6. Run dependency security scan (`mvn -Psecurity-scan verify`).
 
 ## Repository Map
 
@@ -19,6 +20,7 @@ This repository contains a production-style prototype of a tamper-evident audit 
 - `docs/scenarios/B-extension.md`: Scenario B execution and validation.
 - `docs/scenarios/C-ambiguous.md`: Scenario C clarification and scoped implementation.
 - `docs/testing-strategy.md`: Unit/integration test coverage and gaps.
+- `docs/quality-gates.md`: CI and static/security quality gate details.
 - `docs/ai-usage-log.md`: AI prompt traceability notes.
 - `docs/final-engineering-summary.md`: Final rationale, risks, and limitations.
 - `docs/backlog.md`: Issue-ready execution backlog.
