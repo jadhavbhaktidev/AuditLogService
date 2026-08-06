@@ -42,11 +42,11 @@
 
 ## Epic 3 - Scenario C Ambiguous Requirement
 
-- [ ] BL-301 Write clarification and assumptions document.
-- [ ] BL-302 Translate to concrete report API requirements.
-- [ ] BL-303 Implement scoped compliance reporting endpoint.
-- [ ] BL-304 Add compliance report tests and fixtures.
-- [ ] BL-305 Document deferred scope and rationale.
+- [x] BL-301 Write clarification and assumptions document.
+- [x] BL-302 Translate to concrete report API requirements.
+- [x] BL-303 Implement scoped compliance reporting endpoint.
+- [x] BL-304 Add compliance report tests and fixtures.
+- [x] BL-305 Document deferred scope and rationale.
 
 ## Epic 4 - Quality Gates and Documentation
 
