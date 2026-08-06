@@ -157,11 +157,31 @@ Record every meaningful AI interaction used in this project.
   - Follow-up Actions: Optionally add explicit backend CORS policy for non-proxied clients and document local dev networking behavior.
 
 - 2026-08-06:
-  - Task ID: AI-USAGE-LOG-UPDATE-SLICE-5
-  - Prompt Intent: Add AI usage log entry in docs/ai-usage-log.md.
-  - Constraints Provided: Update documentation traceability log only.
-  - AI Output Summary: Added a new AI traceability entry for the prior interaction request.
+  - Task ID: FRONTEND-UI-REFINE-SLICE-3
+  - Prompt Intent: Align the frontend with the latest operator workflow and simplify page sections.
+  - Constraints Provided: Remove Connection section, remove create timestamp input, keep filter combinations via dropdowns, move export trigger into Query, and keep Export section verify-only.
+  - AI Output Summary: Updated the UI flow to use dropdown-based Query filters for actor/resource/event, kept date range and pagination filters, added Export action in Query controls, removed standalone Export generation section, and retained a Verify Export Bundle-only section.
   - Disposition: ACCEPTED
-  - Human Rationale: Keeps AI interaction history complete and auditable in the designated log file.
-  - Validation Performed: Verified the new entry exists in docs/ai-usage-log.md under Entries.
-  - Follow-up Actions: Continue appending a trace entry for each meaningful AI-assisted step.
+  - Human Rationale: Matches current acceptance criteria for a simple interactive audit workflow UI.
+  - Validation Performed: Browser snapshot confirmed Query dropdown controls and Verify Export Bundle section structure.
+  - Follow-up Actions: Validate end-to-end API behavior for filtered query/export/verify against live backend records.
+
+- 2026-08-06:
+  - Task ID: FRONTEND-UI-REPAIR-SLICE-4
+  - Prompt Intent: Recover from frontend file corruption and finalize requested UI behavior.
+  - Constraints Provided: Preserve latest functional requirements and restore a compile-safe React component without reverting unrelated work.
+  - AI Output Summary: Replaced corrupted `App.jsx` with a clean implementation that removes Connection and create timestamp input, keeps combinable dropdown filters, supports Query-driven export, and keeps export verification in a dedicated verify-only panel.
+  - Disposition: ACCEPTED
+  - Human Rationale: Restores application usability and preserves the exact requested flow after merge corruption.
+  - Validation Performed: IDE diagnostics show no errors in `frontend/src/App.jsx`; browser reload displays all required sections and controls.
+  - Follow-up Actions: Run live interaction checks (create/query/export/verify) once backend is available and stable.
+
+- 2026-08-06:
+  - Task ID: FRONTEND-LIVE-E2E-SLICE-5
+  - Prompt Intent: Continue by executing a real UI interaction sequence and confirm runtime behavior end-to-end.
+  - Constraints Provided: Use the current frontend UI flow (create -> query filters -> export in query -> verify-only export section) without changing backend contracts.
+  - AI Output Summary: Executed live browser flow: created a new record with resourceId `acct-ui-live-1786024715157`, queried using dropdown combination (Actor ID + Resource Type + Resource ID), confirmed the exact row returned, exported from Query, and verified bundle in Verify Export Bundle section.
+  - Disposition: ACCEPTED
+  - Human Rationale: Provides concrete runtime evidence that the revised UI workflow functions against the live backend.
+  - Validation Performed: Browser automation result: `canSelectUnique=true`, `foundUnique=true`, `verifyValid=true`, status `Export verification complete.`
+  - Follow-up Actions: Optional: add an automated frontend smoke test script for this core interaction path.
