@@ -1,0 +1,123 @@
+:root {
+  font-family: "Space Grotesk", sans-serif;
+  color: #ece7db;
+  background: radial-gradient(circle at 10% 10%, #244d65 0%, #102433 45%, #08131c 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+.shell {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem 1rem 3rem;
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  letter-spacing: 0.02em;
+}
+
+.hero p {
+  color: #a7c6da;
+  margin-top: 0.5rem;
+}
+
+.panel {
+  margin-top: 1.25rem;
+  border: 1px solid #2f5e77;
+  background: rgba(11, 24, 35, 0.75);
+  backdrop-filter: blur(6px);
+  border-radius: 14px;
+  padding: 1rem;
+}
+
+.controls {
+  display: grid;
+  gap: 0.8rem;
+}
+
+label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  color: #b9d5e6;
+}
+
+input {
+  border: 1px solid #3d728d;
+  border-radius: 10px;
+  background: #0a1a27;
+  color: #e7f5ff;
+  padding: 0.65rem 0.8rem;
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.checkrow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.checkrow input {
+  width: 16px;
+  height: 16px;
+}
+
+.buttonGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.6rem;
+}
+
+button {
+  border: 0;
+  border-radius: 10px;
+  padding: 0.7rem 0.9rem;
+  font-weight: 700;
+  background: linear-gradient(120deg, #ffae42, #ffd36b);
+  color: #1f1300;
+  cursor: pointer;
+  transition: transform 120ms ease, filter 120ms ease;
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+
+button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.output h2 {
+  margin-top: 0;
+}
+
+pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: "IBM Plex Mono", monospace;
+  margin: 0;
+  color: #d8f4ff;
+  background: #091723;
+  border: 1px solid #23455b;
+  border-radius: 10px;
+  padding: 0.8rem;
+  max-height: 360px;
+  overflow: auto;
+}
+
+@media (max-width: 640px) {
+  .shell {
+    padding-top: 1.25rem;
+  }
+}
