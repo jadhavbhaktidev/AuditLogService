@@ -135,3 +135,23 @@ Record every meaningful AI interaction used in this project.
   - Human Rationale: Satisfies BL-401 through BL-403 with executable automation and clear runbook documentation.
   - Validation Performed: No IDE diagnostics after integration; Maven verify/bootstrap downloads initiated for first-run plugin resolution.
   - Follow-up Actions: Finalize architecture/testing documentation and final engineering summary.
+
+- 2026-08-06:
+  - Task ID: FRONTEND-CONSOLE-SLICE-1
+  - Prompt Intent: Create a simple React frontend in a separate `frontend` directory to exercise backend audit APIs.
+  - Constraints Provided: Keep UI minimal, run locally on Vite, and support direct API testing flows.
+  - AI Output Summary: Replaced template App with a small API console (base URL, actor filter, includeArchived toggle, and actions for health/verify/seed/query); updated app styles and page metadata for clear operator-focused usage.
+  - Disposition: ACCEPTED
+  - Human Rationale: Meets the need for a lightweight browser-based test harness without changing backend contracts.
+  - Validation Performed: `npm.cmd install` completed successfully; `npm.cmd run build` completed successfully.
+  - Follow-up Actions: Perform live browser test against backend and resolve integration blockers.
+
+- 2026-08-06:
+  - Task ID: FRONTEND-LIVE-TEST-SLICE-2
+  - Prompt Intent: Test the frontend live and confirm end-to-end calls to backend endpoints.
+  - Constraints Provided: Keep backend API behavior unchanged and fix only the integration path needed for local development.
+  - AI Output Summary: Ran live click-through for Health, Verify, Seed Event, and Query Events; diagnosed browser CORS failures; added Vite dev proxy for `/audit`, `/actuator`, and `/healthz`; defaulted frontend base URL to same-origin to route through proxy.
+  - Disposition: ACCEPTED
+  - Human Rationale: Resolves local cross-origin blocking while avoiding production API behavior changes.
+  - Validation Performed: Browser interactions returned successful responses (`200 OK` for health/verify/query and `201 Created` for seed) after proxy update.
+  - Follow-up Actions: Optionally add explicit backend CORS policy for non-proxied clients and document local dev networking behavior.
