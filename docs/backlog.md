@@ -31,9 +31,9 @@
 
 ## Epic 2 - Scenario B Extension
 
-- [ ] BL-201 Implement retention policy configuration.
-- [ ] BL-202 Implement archive workflow and metadata.
-- [ ] BL-203 Update verifier for legitimate archive handling.
+- [x] BL-201 Implement retention policy configuration.
+- [x] BL-202 Implement archive workflow and metadata.
+- [x] BL-203 Update verifier for legitimate archive handling.
 - [x] BL-204 Implement structured redaction strategy.
 - [x] BL-205 Add redaction approval/audit metadata.
 - [x] BL-206 Implement bulk export endpoint.
@@ -50,11 +50,11 @@
 
 ## Epic 4 - Quality Gates and Documentation
 
-- [ ] BL-401 Add lint and static analysis pipeline (Checkstyle + SpotBugs).
-- [ ] BL-402 Add CI test workflow.
-- [ ] BL-403 Add dependency security scan (OWASP Dependency Check).
-- [ ] BL-404 Finalize architecture and testing docs.
-- [ ] BL-405 Finalize final engineering summary.
+- [x] BL-401 Add lint and static analysis pipeline (Checkstyle + SpotBugs).
+- [x] BL-402 Add CI test workflow.
+- [x] BL-403 Add dependency security scan (OWASP Dependency Check).
+- [x] BL-404 Finalize architecture and testing docs.
+- [x] BL-405 Finalize final engineering summary.
 - [ ] BL-406 Rehearse live defense demo flow.
 
 ## Suggested Execution Order
