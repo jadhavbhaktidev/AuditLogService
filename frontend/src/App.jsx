@@ -362,27 +362,23 @@ function App() {
           <table>
             <thead>
               <tr>
-                <th>Seq</th>
                 <th>Event Type</th>
                 <th>Actor</th>
                 <th>Resource Type</th>
                 <th>Resource ID</th>
                 <th>Timestamp</th>
-                <th>Record Hash</th>
               </tr>
             </thead>
             <tbody>
               {items.length === 0 ? (
-                <tr><td colSpan={7} className="empty">No records</td></tr>
+                <tr><td colSpan={5} className="empty">No records</td></tr>
               ) : items.map((item) => (
                 <tr key={`${item.sequenceNumber}-${item.id}`}>
-                  <td>{item.sequenceNumber}</td>
                   <td>{item.eventType}</td>
                   <td>{item.actorId}</td>
                   <td>{item.resourceType}</td>
                   <td>{item.resourceId}</td>
                   <td>{item.timestamp}</td>
-                  <td className="mono truncate">{item.recordHash}</td>
                 </tr>
               ))}
             </tbody>
