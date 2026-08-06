@@ -55,7 +55,6 @@
 - [x] BL-403 Add dependency security scan (OWASP Dependency Check).
 - [x] BL-404 Finalize architecture and testing docs.
 - [x] BL-405 Finalize final engineering summary.
-- [ ] BL-406 Rehearse live defense demo flow.
 
 ## Suggested Execution Order
 
