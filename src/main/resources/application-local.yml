@@ -4,5 +4,5 @@ spring:
       on-profile: local
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/audit_log_service}
-    username: ${SPRING_DATASOURCE_USERNAME:audit_user}
-    password: ${SPRING_DATASOURCE_PASSWORD:audit_password}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:admin@123}
