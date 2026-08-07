@@ -195,3 +195,13 @@ Record every meaningful AI interaction used in this project.
   - Human Rationale: Provides complete multi-layer documentation for business, product, and technical stakeholders from one consistent baseline.
   - Validation Performed: Confirmed files were created and aligned to existing scenario and architecture docs (`docs/scenarios/*`, `docs/requirements-normalized.md`, `docs/architecture.md`).
   - Follow-up Actions: Optionally add a documentation index page that maps audience to BRD/PDD/SDD sections.
+
+- 2026-08-07:
+  - Task ID: LOCAL-POSTGRES-CONFIG-SLICE-1
+  - Prompt Intent: Use an existing local PostgreSQL instance instead of Docker for application runtime.
+  - Constraints Provided: Keep configuration environment-variable overrideable and update AI traceability log.
+  - AI Output Summary: Updated datasource default credentials in `src/main/resources/application.yml` and `src/main/resources/application-local.yml` from Docker-oriented `audit_user/audit_password` to local-first `postgres/postgres`, preserving `SPRING_DATASOURCE_*` overrides.
+  - Disposition: ACCEPTED
+  - Human Rationale: Reduces local startup failures when using a pre-existing Postgres installation while still allowing secure per-machine overrides.
+  - Validation Performed: Verified config files were updated with expected defaults and no syntax changes outside datasource credentials.
+  - Follow-up Actions: If local credentials differ, set `SPRING_DATASOURCE_USERNAME` and `SPRING_DATASOURCE_PASSWORD` before running `mvn spring-boot:run`.
