@@ -34,6 +34,8 @@
 
 ## Notes
 
+- Local profile fallback: when running with profile `local`, the service defaults to an embedded H2 database and starts on `http://localhost:8080` even if PostgreSQL is unavailable.
+- To use an existing local PostgreSQL instance instead of H2, set `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, and optionally `SPRING_FLYWAY_ENABLED=true` before starting the app.
 - Keep this file aligned with actual commands you implement.
 - Add OS-specific instructions if required.
 - Assistant workflow rule: no commit or push is executed without explicit user approval in chat.
